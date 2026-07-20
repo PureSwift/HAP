@@ -6,18 +6,20 @@ import TLVCoding
 /// passes it to ``handle(_:isSecured:now:)``, and writes the returned ``BLEPDUResponse``
 /// back to the controller.
 ///
-/// The value procedures are implemented here; the characteristic and protocol configuration
-/// procedures (opcodes `0x07` and `0x08`) depend on broadcast and global state number
-/// management and are handled by the BLE transport layer.
-///
 /// - SeeAlso: HAP Specification R2, Section 7.3.5 HAP Procedures
-public struct BLEProcedureServer<DataSource: CharacteristicDataSource> {
+public struct BLEProcedureServer<
+    DataSource: CharacteristicDataSource,
+    Configuration: BLEConfigurationContext
+> {
 
     /// The accessory whose attribute database is served.
     public var accessory: Accessory
 
     /// Supplies and accepts characteristic values.
     public var dataSource: DataSource
+
+    /// Supplies broadcast configuration and accessory-wide protocol state.
+    public var configuration: Configuration
 
     /// A write staged by a timed write procedure, pending execution.
     private var pendingWrite: PendingWrite?
@@ -30,9 +32,10 @@ public struct BLEProcedureServer<DataSource: CharacteristicDataSource> {
         var remote: Bool
     }
 
-    public init(accessory: Accessory, dataSource: DataSource) {
+    public init(accessory: Accessory, dataSource: DataSource, configuration: Configuration) {
         self.accessory = accessory
         self.dataSource = dataSource
+        self.configuration = configuration
     }
 
     /// Executes the procedure of a request PDU.
@@ -61,10 +64,10 @@ public struct BLEProcedureServer<DataSource: CharacteristicDataSource> {
             return characteristicTimedWrite(request, isSecured: isSecured, now: now)
         case .characteristicExecuteWrite:
             return characteristicExecuteWrite(request, isSecured: isSecured, now: now)
-        case .characteristicConfiguration, .protocolConfiguration:
-            // Handled by the BLE transport layer, which owns the broadcast configuration
-            // and the global state number.
-            return response(request, .unsupportedPDU)
+        case .characteristicConfiguration:
+            return characteristicConfiguration(request, isSecured: isSecured)
+        case .protocolConfiguration:
+            return protocolConfiguration(request, isSecured: isSecured)
         }
     }
 }
@@ -251,6 +254,118 @@ private extension BLEProcedureServer {
     }
 }
 
+
+
+// MARK: - Configuration Procedures
+
+private extension BLEProcedureServer {
+
+    /// HAP Characteristic Configuration Procedure (§7.3.5.8).
+    mutating func characteristicConfiguration(
+        _ request: BLEPDURequest,
+        isSecured: Bool
+    ) -> BLEPDUResponse {
+        guard isSecured else {
+            return response(request, .insufficientAuthentication)
+        }
+        guard let match = accessory.characteristic(iid: UInt64(request.instanceID)) else {
+            return response(request, .invalidInstanceID)
+        }
+        guard let parameters = ConfigurationParameters(body: request.body) else {
+            return response(request, .invalidRequest)
+        }
+        do {
+            var broadcast = try configuration.broadcastConfiguration(
+                for: UInt64(request.instanceID)
+            )
+            if let properties = parameters.properties {
+                let enable = BLECharacteristicConfigurationProperties(rawValue: properties)
+                    .contains(.broadcastNotification)
+                // Only characteristics that support broadcast notifications can enable them.
+                guard !enable
+                        || match.characteristic.properties.contains(.bleSupportsBroadcastNotification)
+                else { return response(request, .invalidRequest) }
+                broadcast.isEnabled = enable
+            }
+            if let interval = parameters.broadcastInterval {
+                broadcast.interval = interval
+            }
+            try configuration.setBroadcastConfiguration(broadcast, for: UInt64(request.instanceID))
+            // The accessory must include all parameters in the response, even defaults.
+            var body = TLVContainer()
+            body.items.append(TLVItem(
+                type: TLVTypeCode(rawValue: 0x01),  // properties
+                value: .init(littleEndianBytes(
+                    broadcast.isEnabled
+                        ? BLECharacteristicConfigurationProperties.broadcastNotification.rawValue
+                        : 0
+                ))
+            ))
+            body.items.append(TLVItem(
+                type: TLVTypeCode(rawValue: 0x02),  // broadcast interval
+                value: .init([broadcast.interval.rawValue])
+            ))
+            return response(request, .success, body: Data(body.data))
+        } catch {
+            return response(request, Self.status(for: error))
+        }
+    }
+
+    /// HAP Protocol Configuration Procedure (§7.3.5.9).
+    ///
+    /// Directed at the HAP Protocol Information service.
+    mutating func protocolConfiguration(
+        _ request: BLEPDURequest,
+        isSecured: Bool
+    ) -> BLEPDUResponse {
+        guard isSecured else {
+            return response(request, .insufficientAuthentication)
+        }
+        guard let service = accessory.service(iid: UInt64(request.instanceID)),
+              service.properties.contains(.bleSupportsConfiguration)
+        else { return response(request, .invalidInstanceID) }
+        guard let parameters = ProtocolConfigurationParameters(body: request.body) else {
+            return response(request, .invalidRequest)
+        }
+        do {
+            var broadcastKey: Data?
+            if let advertisingIdentifier = parameters.advertisingIdentifier {
+                try configuration.setAdvertisingIdentifier(advertisingIdentifier)
+            }
+            if parameters.generateBroadcastEncryptionKey {
+                broadcastKey = try configuration.generateBroadcastEncryptionKey()
+            }
+            guard parameters.getAllParams
+                    || parameters.generateBroadcastEncryptionKey
+                    || parameters.advertisingIdentifier != nil
+            else { return response(request, .invalidRequest) }
+            // Response parameters (Table 7-34).
+            var body = TLVContainer()
+            body.items.append(TLVItem(
+                type: TLVTypeCode(rawValue: 0x01),  // current state number
+                value: .init(littleEndianBytes(configuration.globalStateNumber))
+            ))
+            body.items.append(TLVItem(
+                type: TLVTypeCode(rawValue: 0x02),  // current config number
+                value: .init([configuration.configurationNumber])
+            ))
+            body.items.append(TLVItem(
+                type: TLVTypeCode(rawValue: 0x03),  // advertising identifier
+                value: .init(configuration.advertisingIdentifier)
+            ))
+            if let broadcastKey {
+                body.items.append(TLVItem(
+                    type: TLVTypeCode(rawValue: 0x04),  // broadcast encryption key
+                    value: .init(broadcastKey)
+                ))
+            }
+            return response(request, .success, body: Data(body.data))
+        } catch {
+            return response(request, Self.status(for: error))
+        }
+    }
+}
+
 // MARK: - Request Body
 
 /// The parameters of a write or timed write request body.
@@ -287,6 +402,70 @@ private struct WriteParameters {
             case .returnResponse:
                 guard value.count == 1 else { return nil }
                 self.returnResponse = Array(value)[0] == 0x01
+            default:
+                continue
+            }
+        }
+    }
+}
+
+
+// MARK: - Configuration Parameters
+
+/// The parameters of a characteristic configuration request body (Table 7-28).
+private struct ConfigurationParameters {
+
+    var properties: UInt16?
+    var broadcastInterval: BLEBroadcastInterval?
+
+    init?(body: Data?) {
+        guard let body else {
+            return  // an empty body reads the current configuration
+        }
+        guard let container = TLVContainer(data: .init(body)) else { return nil }
+        for item in container.items {
+            let value = Data(item.value)
+            switch item.type.rawValue {
+            case 0x01:  // HAP-Characteristic-Configuration-Param-Properties
+                guard value.count == 2 else { return nil }
+                let bytes = Array(value)
+                let properties = UInt16(bytes[0]) | UInt16(bytes[1]) << 8
+                // Reserved property bits must be rejected.
+                guard BLECharacteristicConfigurationProperties(rawValue: properties)
+                    .isSubset(of: .broadcastNotification)
+                else { return nil }
+                self.properties = properties
+            case 0x02:  // HAP-Characteristic-Configuration-Param-Broadcast-Interval
+                guard value.count == 1,
+                      let interval = BLEBroadcastInterval(rawValue: Array(value)[0])
+                else { return nil }
+                self.broadcastInterval = interval
+            default:
+                continue
+            }
+        }
+    }
+}
+
+/// The parameters of a protocol configuration request body (Table 7-32).
+private struct ProtocolConfigurationParameters {
+
+    var generateBroadcastEncryptionKey = false
+    var getAllParams = false
+    var advertisingIdentifier: Data?
+
+    init?(body: Data?) {
+        guard let body, let container = TLVContainer(data: .init(body)) else { return nil }
+        for item in container.items {
+            let value = Data(item.value)
+            switch item.type.rawValue {
+            case 0x01:  // Generate-Broadcast-Encryption-Key
+                generateBroadcastEncryptionKey = true
+            case 0x02:  // Get-All-Params
+                getAllParams = true
+            case 0x03:  // Set-Accessory-Advertising-Identifier
+                guard value.count == 6 else { return nil }
+                advertisingIdentifier = value
             default:
                 continue
             }
