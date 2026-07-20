@@ -1,4 +1,3 @@
-import FoundationEmbedded
 @testable import HAP
 
 /// In-memory key-value store for tests.
