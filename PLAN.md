@@ -39,7 +39,11 @@ These constrain every API decision in the core target:
 1. **No existentials** — no `any` types in the core. Type erasure via enums (e.g. `Characteristic`) or generics, never protocol boxes. Untyped `throws` implies an `any Error` existential, so:
 2. **Typed throws everywhere** — `throws(HAPError)` (the pattern swift-embedded-foundation itself uses).
 3. **No Codable, no reflection** — TLV via `TLVCodable` conformances (macro-generated or hand-written); JSON (IP transport) via a hand-rolled serializer over the attribute DB, not `JSONEncoder`.
-4. **No Foundation in the core** — `import FoundationEmbedded` (or a conditional shim `#if canImport(FoundationEmbedded)` while transitioning existing files off `import Foundation`).
+4. **Foundation fallback chain** — `Sources/HAP/FoundationTypes.swift` declares module-level
+   `Data`/`UUID` typealiases resolving to `FoundationEssentials` (Linux) → `Foundation`
+   (Darwin) → `FoundationEmbedded` (Embedded Swift). Hosted platforms therefore interoperate
+   with real Foundation types; no other file imports a Foundation variant directly, and the
+   module-local aliases shadow any `Data` type exported by dependencies (e.g. TLVCoding).
 5. **Allocation-conscious, not allocation-free** — classes and ARC are fine (Embedded Swift supports them); avoid unbounded intermediate buffers in hot paths; parse in place with `ParserSpan`.
 6. **No async/await in the core** — Embedded Swift concurrency support is immature and executor-heavy for MCUs. The core is a **sans-I/O, synchronous, event-driven state machine** (mirroring the ADK's run-loop model): PAL implementations deliver events via plain callbacks. A hosted convenience layer may wrap this in async later.
 7. **Everything `Sendable`, strict concurrency clean** — cheap now, required later.
