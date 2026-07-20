@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// Cryptographically secure random number source.
 ///
