@@ -35,6 +35,10 @@ public final class BLEAccessoryServer<
 
     private var connections: [UInt64: BLEConnection<Crypto, DataSource, ConfigurationAdapter>] = [:]
 
+    /// A pairing removed by a pairings management request, whose sessions must be torn down
+    /// once the current write completes.
+    private var pendingPairingTeardown: (identifier: String, removedAll: Bool)?
+
     /// Creates a server, provisioning identity on first launch.
     ///
     /// - Parameters:
@@ -103,6 +107,23 @@ public final class BLEAccessoryServer<
                 configuration: ConfigurationAdapter(server: self, connection: connection)
             )
         )
+        // Route Add / Remove / List Pairings to the shared pairing store. Session teardown
+        // for a removed controller is deferred so it does not mutate `connections` while
+        // this connection is being written to.
+        connections[connection]!.handlePairingManagement = { [unowned self] request, controller in
+            guard let message = BLEPairingPDU.message(from: request) else {
+                return BLEPDUResponse(
+                    transactionID: request.transactionID,
+                    status: .invalidRequest
+                )
+            }
+            let server = PairingsServer(store: self.pairings)
+            let result = server.handle(message, controllerIdentifier: controller)
+            if case let .removed(identifier, removedAll) = result.effect {
+                self.pendingPairingTeardown = (identifier, removedAll)
+            }
+            return BLEPairingPDU.response(result.message, transactionID: request.transactionID)
+        }
     }
 
     /// Removes a controller connection, ending the GSN increment cycle.
@@ -134,6 +155,15 @@ public final class BLEAccessoryServer<
         // Persist a pairing established by a completed Pair Setup.
         if let result = connections[connection]!.pairing.pairSetupResult {
             try pairings.add(Pairing(result))
+        }
+        // Tear down the sessions of a controller removed via pairings management. This runs
+        // after the write above so it does not overlap access to `connections`.
+        if let teardown = pendingPairingTeardown {
+            pendingPairingTeardown = nil
+            for (id, state) in connections
+            where state.verifiedController == teardown.identifier {
+                connections[id] = nil
+            }
         }
     }
 
