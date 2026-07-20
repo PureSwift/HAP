@@ -1,4 +1,4 @@
-import Foundation
+import FoundationEmbedded
 
 /// A HomeKit characteristic that carries an opaque data blob.
 public struct DataCharacteristic {
@@ -11,7 +11,7 @@ public struct DataCharacteristic {
     public var iid: UInt64
 
     /// The type of the characteristic.
-    public var characteristicType: UUID
+    public var characteristicType: HAPUUID
 
     /// Description for debugging (based on the "Type" field of the HAP specification).
     public var debugDescription: String
