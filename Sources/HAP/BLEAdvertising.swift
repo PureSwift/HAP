@@ -1,16 +1,57 @@
 
 /// The Global State Number (GSN) for a Bluetooth LE accessory server.
 ///
-/// The GSN is used in BLE advertisements to signal to paired controllers that the accessory's
-/// state has changed while no controller was connected.
+/// The GSN represents the state at which a required change on the accessory was last notified
+/// to the controller. It is a 16-bit monotonically increasing value in the range 1 – 65535 that
+/// wraps to 1 on overflow, persists across reboots and power cycles, and is reset to 1 on
+/// factory reset or firmware update.
 ///
+/// - SeeAlso: HAP Specification R2, Section 7.4.1.8 Global State Number (GSN)
 /// - Note: Corresponds to the C `HAPBLEAccessoryServerGSN` struct.
-public struct BLEAccessoryServerGSN {
+public struct BLEAccessoryServerGSN: Equatable, Hashable, Sendable {
+
     /// Global State Number.
-    public var gsn: UInt16
+    public private(set) var gsn: UInt16
 
     /// Whether the GSN has been incremented in the current connect / disconnect cycle.
-    public var didIncrement: Bool
+    public private(set) var didIncrement: Bool
+
+    /// The initial state of a factory-reset accessory.
+    public static let initial = BLEAccessoryServerGSN()
+
+    public init() {
+        self.gsn = 1
+        self.didIncrement = false
+    }
+
+    /// Creates a state from persisted values.
+    ///
+    /// - Returns: `nil` if the global state number is 0, which is out of range.
+    public init?(gsn: UInt16, didIncrement: Bool) {
+        guard gsn != 0 else { return nil }
+        self.gsn = gsn
+        self.didIncrement = didIncrement
+    }
+
+    /// Increments the global state number, at most once per connect / disconnect cycle.
+    ///
+    /// Wraps to 1 on overflow, since 0 is not a valid value.
+    ///
+    /// - Returns: Whether the value changed.
+    @discardableResult
+    public mutating func increment() -> Bool {
+        guard !didIncrement else { return false }
+        gsn = gsn == .max ? 1 : gsn + 1
+        didIncrement = true
+        return true
+    }
+
+    /// Allows the global state number to be incremented again.
+    ///
+    /// Called when a controller disconnects, ending the current connect / disconnect cycle.
+    public mutating func endCycle() {
+        didIncrement = false
+    }
 }
 
 // MARK: -
