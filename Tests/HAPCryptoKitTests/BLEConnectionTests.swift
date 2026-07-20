@@ -207,6 +207,117 @@ struct BLEConnectionTests {
         #expect(Array(response.body ?? Data()) == [0x01, 0x01, 0x01])
     }
 
+    /// Runs Pair Verify M1–M4 over the connection, returning the controller's mirrored
+    /// secure session for issuing further encrypted requests.
+    func secure(
+        _ connection: inout BLEConnection<SwiftCryptoProvider, ConnectionDataSource, ConnectionConfiguration>,
+        controller: Controller
+    ) throws -> SecureSession<SwiftCryptoProvider> {
+        let ephemeralSecret = provider.makeCurve25519PrivateKey()
+        let ephemeralPublic = provider.curve25519PublicKey(for: ephemeralSecret)
+        var m1 = PairingTLV()
+        m1.append(integer: 1, for: .state)
+        m1.append(ephemeralPublic, for: .publicKey)
+        try connection.handleWrite(characteristicIID: 0x23, data: pairingWrite(m1, iid: 0x23, tid: 1), now: now)
+        let m2Data = connection.readResponse()
+        let m2 = try pairingTLV(from: try #require(m2Data))
+        let accessoryEphemeral = try #require(m2[.publicKey])
+        let sharedSecret = try provider.curve25519SharedSecret(
+            privateKey: ephemeralSecret,
+            peerPublicKey: accessoryEphemeral
+        )
+        let sessionKey = provider.hkdfSHA512(
+            inputKeyMaterial: sharedSecret,
+            salt: Data(Array("Pair-Verify-Encrypt-Salt".utf8)),
+            info: Data(Array("Pair-Verify-Encrypt-Info".utf8)),
+            outputByteCount: 32
+        )
+        var info = ephemeralPublic
+        info.append(contentsOf: Array(controllerIdentifier.utf8))
+        info.append(contentsOf: accessoryEphemeral)
+        var subTLV = PairingTLV()
+        subTLV.append(string: controllerIdentifier, for: .identifier)
+        subTLV.append(
+            try provider.ed25519Signature(for: info, privateKey: controller.secretKey),
+            for: .signature
+        )
+        var m3 = PairingTLV()
+        m3.append(integer: 3, for: .state)
+        m3.append(
+            try provider.seal(
+                subTLV.data,
+                key: sessionKey,
+                nonce: Data(Array("PV-Msg03".utf8)),
+                authenticatedData: Data()
+            ),
+            for: .encryptedData
+        )
+        try connection.handleWrite(characteristicIID: 0x23, data: pairingWrite(m3, iid: 0x23, tid: 2), now: now)
+        _ = connection.readResponse()
+        let keys = PairVerifyResult(
+            controllerIdentifier: controllerIdentifier,
+            sharedSecret: sharedSecret,
+            sessionKey: sessionKey
+        ).controlChannelKeys(using: provider)
+        return SecureSession(
+            crypto: provider,
+            encryptKey: keys.controllerToAccessory,
+            decryptKey: keys.accessoryToController
+        )
+    }
+
+    @Test
+    func pairingManagementRoutedWhenSecured() throws {
+        let controller = makeController()
+        var connection = makeConnection(controller: controller)
+        var received: (request: BLEPDURequest, controller: String)?
+        connection.handlePairingManagement = { request, controller in
+            received = (request, controller)
+            return BLEPDUResponse(transactionID: request.transactionID, status: .success)
+        }
+        var controllerSession = try secure(&connection, controller: controller)
+
+        // A List Pairings request on the Pairing Pairings characteristic (0x25).
+        var list = PairingTLV()
+        list.append(integer: 1, for: .state)
+        list.append(integer: UInt64(PairingMethod.listPairings.rawValue), for: .method)
+        var body = TLVContainer()
+        body.items.append(TLVItem(type: BLEPDUParamType.value.typeCode, value: .init(list.data)))
+        let request = BLEPDURequest(
+            opcode: .characteristicWrite,
+            transactionID: 5,
+            instanceID: 0x25,
+            body: Data(body.data)
+        )
+        try connection.handleWrite(
+            characteristicIID: 0x25,
+            data: try controllerSession.encrypt(request.data),
+            now: now
+        )
+        let encData = connection.readResponse()
+        let encryptedResponse = try #require(encData)
+        let response = try BLEPDUResponse(data: try controllerSession.decrypt(encryptedResponse))
+        #expect(response.status == .success)
+        #expect(received?.controller == controllerIdentifier)
+        #expect(received?.request.instanceID == 0x25)
+    }
+
+    @Test
+    func pairingManagementRejectedWhenUnsecured() throws {
+        var connection = makeConnection(controller: makeController())
+        var handlerCalled = false
+        connection.handlePairingManagement = { request, _ in
+            handlerCalled = true
+            return BLEPDUResponse(transactionID: request.transactionID, status: .success)
+        }
+        let request = BLEPDURequest(opcode: .characteristicWrite, transactionID: 1, instanceID: 0x25)
+        try connection.handleWrite(characteristicIID: 0x25, data: request.data, now: now)
+        let respData = connection.readResponse()
+        let response = try BLEPDUResponse(data: try #require(respData))
+        #expect(response.status == .insufficientAuthentication)
+        #expect(!handlerCalled)
+    }
+
     @Test
     func unsecuredValueReadIsRejected() throws {
         var connection = makeConnection(controller: makeController())
