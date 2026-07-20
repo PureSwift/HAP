@@ -1,5 +1,4 @@
 import Testing
-import FoundationEmbedded
 @testable import HAP
 
 @Suite
