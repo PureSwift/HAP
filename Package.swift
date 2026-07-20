@@ -5,18 +5,46 @@ import PackageDescription
 
 let package = Package(
     name: "HAP",
+    platforms: [
+        .macOS(.v15),
+        .iOS(.v18),
+        .watchOS(.v11),
+        .tvOS(.v18),
+        .visionOS(.v2)
+    ],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "HAP",
             targets: ["HAP"]
         ),
     ],
+    dependencies: [
+        .package(
+            url: "https://github.com/PureSwift/Bluetooth.git",
+            from: "7.5.1"
+        ),
+        .package(
+            url: "https://github.com/PureSwift/TLVCoding.git",
+            from: "3.0.0"
+        ),
+        .package(
+            url: "https://github.com/PureSwift/swift-embedded-foundation.git",
+            from: "0.1.0"
+        )
+        // swift-binary-parsing is currently omitted as a direct dependency:
+        // its swift-syntax pin (602.x) conflicts with TLVCoding 3.0.0 (603.x).
+        // Re-add once apple/swift-binary-parsing raises its swift-syntax floor.
+    ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "HAP"
+            name: "HAP",
+            dependencies: [
+                .product(name: "Bluetooth", package: "Bluetooth"),
+                .product(name: "BluetoothGAP", package: "Bluetooth"),
+                .product(name: "BluetoothGATT", package: "Bluetooth"),
+                .product(name: "TLVCoding", package: "TLVCoding"),
+                .product(name: "FoundationEmbedded", package: "swift-embedded-foundation")
+            ]
         ),
         .testTarget(
             name: "HAPTests",
