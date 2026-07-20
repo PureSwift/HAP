@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// An established pairing with a controller.
 public struct Pairing: Equatable, Hashable, Sendable {
