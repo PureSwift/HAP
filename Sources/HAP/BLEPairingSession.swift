@@ -1,5 +1,3 @@
-import TLVCoding
-
 /// Routes HAP-BLE writes on the Pairing service characteristics into the pairing
 /// state machines.
 ///
@@ -68,7 +66,7 @@ public struct BLEPairingSession<Crypto: CryptoProvider> {
 
     /// Handles a write request PDU addressed to the Pair Setup characteristic.
     public mutating func handlePairSetupWrite(_ request: BLEPDURequest) -> BLEPDUResponse {
-        guard let message = Self.pairingMessage(from: request) else {
+        guard let message = BLEPairingPDU.message(from: request) else {
             return BLEPDUResponse(transactionID: request.transactionID, status: .invalidRequest)
         }
         if pairSetup == nil {
@@ -87,14 +85,14 @@ public struct BLEPairingSession<Crypto: CryptoProvider> {
         } else if pairSetup!.state == .failed {
             pairSetup = nil
         }
-        return Self.pairingResponse(response, transactionID: request.transactionID)
+        return BLEPairingPDU.response(response, transactionID: request.transactionID)
     }
 
     /// Handles a write request PDU addressed to the Pair Verify characteristic.
     ///
     /// A new Pair Verify exchange invalidates any previously established session state.
     public mutating func handlePairVerifyWrite(_ request: BLEPDURequest) -> BLEPDUResponse {
-        guard let message = Self.pairingMessage(from: request) else {
+        guard let message = BLEPairingPDU.message(from: request) else {
             return BLEPDUResponse(transactionID: request.transactionID, status: .invalidRequest)
         }
         if pairVerify == nil {
@@ -113,49 +111,6 @@ public struct BLEPairingSession<Crypto: CryptoProvider> {
         } else if pairVerify!.state == .failed {
             pairVerify = nil
         }
-        return Self.pairingResponse(response, transactionID: request.transactionID)
-    }
-
-    /// Extracts the pairing TLV from the `HAP-Param-Value` of a write request body.
-    ///
-    /// Pairing payloads exceed 255 bytes, so the value parameter is fragmented into
-    /// multiple TLV items which are coalesced here.
-    static func pairingMessage(from request: BLEPDURequest) -> PairingTLV? {
-        guard request.opcode == .characteristicWrite,
-              let body = request.body,
-              let container = TLVContainer(data: .init(body))
-        else { return nil }
-        var value = [UInt8]()
-        var found = false
-        for item in container.items where item.type == BLEPDUParamType.value.typeCode {
-            found = true
-            value.append(contentsOf: item.value)
-        }
-        guard found else { return nil }
-        return PairingTLV(data: Data(value))
-    }
-
-    /// Wraps a pairing response TLV in a response PDU body, fragmenting the value
-    /// parameter into 255-byte TLV items.
-    static func pairingResponse(
-        _ message: PairingTLV,
-        transactionID: UInt8
-    ) -> BLEPDUResponse {
-        let value = Array(message.data)
-        var body = TLVContainer()
-        var offset = 0
-        repeat {
-            let end = min(offset + 255, value.count)
-            body.items.append(TLVItem(
-                type: BLEPDUParamType.value.typeCode,
-                value: .init(value[offset ..< end])
-            ))
-            offset = end
-        } while offset < value.count
-        return BLEPDUResponse(
-            transactionID: transactionID,
-            status: .success,
-            body: Data(body.data)
-        )
+        return BLEPairingPDU.response(response, transactionID: request.transactionID)
     }
 }
