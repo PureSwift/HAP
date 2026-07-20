@@ -1,4 +1,3 @@
-import FoundationEmbedded
 import TLVCoding
 
 /// A single logical item in a pairing TLV8 payload.
@@ -10,9 +9,9 @@ public struct PairingTLVItem: Equatable, Hashable, Sendable {
     public var type: PairingTLVType
 
     /// The (defragmented) value of the item.
-    public var value: FoundationEmbedded.Data
+    public var value: Data
 
-    public init(type: PairingTLVType, value: FoundationEmbedded.Data) {
+    public init(type: PairingTLVType, value: Data) {
         self.type = type
         self.value = value
     }
@@ -44,7 +43,7 @@ public struct PairingTLV: Equatable, Hashable, Sendable {
 public extension PairingTLV {
 
     /// Decodes a TLV8 payload, coalescing fragments and ignoring unrecognized types.
-    init?(data: FoundationEmbedded.Data) {
+    init?(data: Data) {
         guard let container = TLVContainer(data: .init(data)) else { return nil }
         var items = [PairingTLVItem]()
         var previousWasFullFragment = false
@@ -60,7 +59,7 @@ public extension PairingTLV {
                 // Continuation of a fragmented value.
                 items[lastIndex].value.append(contentsOf: rawItem.value)
             } else {
-                items.append(PairingTLVItem(type: type, value: FoundationEmbedded.Data(rawItem.value)))
+                items.append(PairingTLVItem(type: type, value: Data(rawItem.value)))
             }
             previousWasFullFragment = rawItem.value.count == 255
         }
@@ -68,7 +67,7 @@ public extension PairingTLV {
     }
 
     /// Encodes the payload, fragmenting values larger than 255 bytes.
-    var data: FoundationEmbedded.Data {
+    var data: Data {
         var container = TLVContainer()
         for item in items {
             if item.value.isEmpty {
@@ -84,7 +83,7 @@ public extension PairingTLV {
                 }
             }
         }
-        return FoundationEmbedded.Data(container.data)
+        return Data(container.data)
     }
 }
 
@@ -93,18 +92,18 @@ public extension PairingTLV {
 public extension PairingTLV {
 
     /// The value of the first item with the given type.
-    subscript(type: PairingTLVType) -> FoundationEmbedded.Data? {
+    subscript(type: PairingTLVType) -> Data? {
         items.first(where: { $0.type == type })?.value
     }
 
     /// Appends an item.
-    mutating func append(_ value: FoundationEmbedded.Data, for type: PairingTLVType) {
+    mutating func append(_ value: Data, for type: PairingTLVType) {
         items.append(PairingTLVItem(type: type, value: value))
     }
 
     /// Appends a zero-length separator item, delimiting multiple items of the same type.
     mutating func appendSeparator() {
-        append(FoundationEmbedded.Data(), for: .separator)
+        append(Data(), for: .separator)
     }
 
     /// Appends an integer item (little-endian, minimum number of bytes).
@@ -114,7 +113,7 @@ public extension PairingTLV {
 
     /// Appends a UTF-8 string item.
     mutating func append(string value: String, for type: PairingTLVType) {
-        append(FoundationEmbedded.Data(Array(value.utf8)), for: type)
+        append(Data(Array(value.utf8)), for: type)
     }
 
     /// Decodes the first item with the given type as an integer.
@@ -176,18 +175,18 @@ public extension PairingTLV {
 public extension PairingTLV {
 
     /// Encodes an integer little-endian with the minimum number of bytes.
-    static func encodeInteger(_ value: UInt64) -> FoundationEmbedded.Data {
+    static func encodeInteger(_ value: UInt64) -> Data {
         var bytes: [UInt8] = []
         var remaining = value
         repeat {
             bytes.append(UInt8(truncatingIfNeeded: remaining))
             remaining >>= 8
         } while remaining > 0
-        return FoundationEmbedded.Data(bytes)
+        return Data(bytes)
     }
 
     /// Decodes a little-endian integer of 1...8 bytes.
-    static func decodeInteger(_ data: FoundationEmbedded.Data) -> UInt64? {
+    static func decodeInteger(_ data: Data) -> UInt64? {
         guard !data.isEmpty, data.count <= 8 else { return nil }
         var value: UInt64 = 0
         for (index, byte) in data.enumerated() {
