@@ -17,6 +17,10 @@ let package = Package(
             name: "HAP",
             targets: ["HAP"]
         ),
+        .library(
+            name: "HAPCryptoKit",
+            targets: ["HAPCryptoKit"]
+        ),
     ],
     dependencies: [
         .package(
@@ -35,6 +39,14 @@ let package = Package(
         .package(
             url: "https://github.com/PureSwift/swift-embedded-foundation.git",
             from: "0.1.0"
+        ),
+        .package(
+            url: "https://github.com/apple/swift-crypto.git",
+            from: "3.0.0"
+        ),
+        .package(
+            url: "https://github.com/attaswift/BigInt.git",
+            from: "5.3.0"
         )
         // swift-binary-parsing is currently omitted as a direct dependency:
         // its swift-syntax pin (602.x) conflicts with TLVCoding 3.0.0 (603.x).
@@ -49,6 +61,22 @@ let package = Package(
                 .product(name: "BluetoothGATT", package: "Bluetooth"),
                 .product(name: "GATT", package: "GATT"),
                 .product(name: "TLVCoding", package: "TLVCoding"),
+                .product(name: "FoundationEmbedded", package: "swift-embedded-foundation")
+            ]
+        ),
+        .target(
+            name: "HAPCryptoKit",
+            dependencies: [
+                "HAP",
+                .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "BigInt", package: "BigInt"),
+                .product(name: "FoundationEmbedded", package: "swift-embedded-foundation")
+            ]
+        ),
+        .testTarget(
+            name: "HAPCryptoKitTests",
+            dependencies: [
+                "HAPCryptoKit",
                 .product(name: "FoundationEmbedded", package: "swift-embedded-foundation")
             ]
         ),
