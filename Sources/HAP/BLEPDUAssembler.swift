@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// Fragmentation of HAP-BLE PDUs.
 ///
