@@ -8,7 +8,7 @@
 /// The remaining properties must be evaluated on a case-by-case basis.
 ///
 /// - Note: ABI-compatible with the C `HAPCharacteristicProperties` struct (`sizeof == 4`).
-public struct CharacteristicProperties: OptionSet {
+public struct CharacteristicProperties: OptionSet, Sendable {
     public let rawValue: UInt32
 
     public init(rawValue: UInt32) {
