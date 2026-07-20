@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// A HomeKit setup hash: the first 4 bytes of `SHA-512(setup ID ‖ device ID)`.
 ///
