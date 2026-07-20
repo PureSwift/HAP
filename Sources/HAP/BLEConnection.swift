@@ -21,6 +21,13 @@ public struct BLEConnection<
     /// The procedure server executing value and configuration procedures.
     public var procedures: BLEProcedureServer<DataSource, Configuration>
 
+    /// Handles a write to the Pairing Pairings characteristic (Add, Remove, and List
+    /// Pairings), receiving the request PDU and the verified controller's identifier.
+    ///
+    /// Set by the accessory server, which owns the pairing store. Invoked only when the
+    /// session is secured.
+    public var handlePairingManagement: ((BLEPDURequest, _ controller: String) -> BLEPDUResponse)?
+
     /// The identifier of the controller verified via Pair Verify, once the session
     /// is secured.
     public private(set) var verifiedController: String?
@@ -38,6 +45,7 @@ public struct BLEConnection<
 
     private let pairSetupIID: UInt16?
     private let pairVerifyIID: UInt16?
+    private let pairingPairingsIID: UInt16?
 
     public init(
         crypto: Crypto,
@@ -51,6 +59,8 @@ public struct BLEConnection<
         self.pairSetupIID = accessory.characteristic(.pairSetup, in: .pairing)
             .map { UInt16(truncatingIfNeeded: $0.characteristic.iid) }
         self.pairVerifyIID = accessory.characteristic(.pairVerify, in: .pairing)
+            .map { UInt16(truncatingIfNeeded: $0.characteristic.iid) }
+        self.pairingPairingsIID = accessory.characteristic(.pairingPairings, in: .pairing)
             .map { UInt16(truncatingIfNeeded: $0.characteristic.iid) }
     }
 
@@ -132,6 +142,17 @@ public struct BLEConnection<
                 pendingSecurityUpgrade = result
             }
             return response
+        case pairingPairingsIID:
+            // Add, Remove, and List Pairings require a secure session.
+            guard isSecured, let controller = verifiedController,
+                  let handler = handlePairingManagement
+            else {
+                return BLEPDUResponse(
+                    transactionID: request.transactionID,
+                    status: .insufficientAuthentication
+                )
+            }
+            return handler(request, controller)
         default:
             return procedures.handle(request, isSecured: isSecured, now: now)
         }
