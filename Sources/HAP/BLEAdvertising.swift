@@ -1,4 +1,3 @@
-import Foundation
 
 /// The Global State Number (GSN) for a Bluetooth LE accessory server.
 ///
