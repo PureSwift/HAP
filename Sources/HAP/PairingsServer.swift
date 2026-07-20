@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// Handles Add Pairing, Remove Pairing, and List Pairings requests received over a
 /// verified session.
