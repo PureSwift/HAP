@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// Cryptographic primitives required by the HomeKit Accessory Protocol.
 ///
