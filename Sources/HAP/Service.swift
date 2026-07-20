@@ -1,9 +1,8 @@
-import Foundation
 
 /// Properties that HomeKit services can have.
 ///
 /// - Note: ABI-compatible with the C `HAPServiceProperties` struct (`sizeof == 2`).
-public struct ServiceProperties: OptionSet {
+public struct ServiceProperties: OptionSet, Sendable {
     public let rawValue: UInt16
 
     public init(rawValue: UInt16) {
@@ -57,7 +56,7 @@ public struct Service {
     public var iid: UInt64
 
     /// The type of the service.
-    public var serviceType: UUID
+    public var serviceType: HAPUUID
 
     /// Description for debugging (based on the "Type" field of the HAP specification).
     public var debugDescription: String
@@ -83,5 +82,5 @@ public struct Service {
     public var linkedServices: [UInt16]?
 
     /// The characteristics contained in this service.
-    public var characteristics: [Any]?
+    public var characteristics: [Characteristic]?
 }
