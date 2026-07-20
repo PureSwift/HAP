@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// Domain of a key-value store item.
 ///
