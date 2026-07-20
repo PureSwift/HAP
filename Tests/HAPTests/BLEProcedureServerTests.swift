@@ -81,10 +81,14 @@ struct BLEProcedureServerTests {
 
     func makeServer(
         values: [UInt64: CharacteristicValue] = [9: .bool(true), 10: .uint8(42), 11: .bool(false), 12: .uint8(0)]
-    ) -> BLEProcedureServer<MockCharacteristicDataSource> {
+    ) -> BLEProcedureServer<MockCharacteristicDataSource, MockBLEConfigurationContext> {
         var dataSource = MockCharacteristicDataSource()
         dataSource.values = values
-        return BLEProcedureServer(accessory: accessory, dataSource: dataSource)
+        return BLEProcedureServer(
+            accessory: accessory,
+            dataSource: dataSource,
+            configuration: MockBLEConfigurationContext()
+        )
     }
 
     var now: HAPTime { HAPTime(rawValue: 1_000_000) }
@@ -409,19 +413,199 @@ struct BLEProcedureServerTests {
         #expect(server.dataSource.writes.isEmpty)
     }
 
-    // MARK: Configuration Opcodes
+
+    // MARK: Characteristic Configuration
+
+    /// Instance ID 9 supports broadcast notifications in these tests.
+    func makeBroadcastServer() -> BLEProcedureServer<MockCharacteristicDataSource, MockBLEConfigurationContext> {
+        var server = makeServer()
+        var accessory = server.accessory
+        var services = accessory.services!
+        var characteristics = services[1].characteristics!
+        guard case var .bool(on) = characteristics[0] else { fatalError() }
+        on.properties.insert(.bleSupportsBroadcastNotification)
+        characteristics[0] = .bool(on)
+        services[1].characteristics = characteristics
+        accessory.services = services
+        server.accessory = accessory
+        return server
+    }
+
+    func configurationBody(properties: UInt16? = nil, interval: UInt8? = nil) -> Data {
+        var container = TLVContainer()
+        if let properties {
+            container.items.append(TLVItem(
+                type: TLVTypeCode(rawValue: 0x01),
+                value: .init([UInt8(properties & 0xFF), UInt8(properties >> 8)])
+            ))
+        }
+        if let interval {
+            container.items.append(TLVItem(type: TLVTypeCode(rawValue: 0x02), value: .init([interval])))
+        }
+        return Data(container.data)
+    }
 
     @Test
-    func configurationOpcodesDeferred() {
+    func characteristicConfigurationEnablesBroadcasts() {
+        var server = makeBroadcastServer()
+        let response = server.handle(
+            request(.characteristicConfiguration, iid: 9, body: configurationBody(properties: 0x0001, interval: 0x02)),
+            isSecured: true,
+            now: now
+        )
+        #expect(response.status == .success)
+        #expect(server.configuration.broadcastConfigurations[9]?.isEnabled == true)
+        #expect(server.configuration.broadcastConfigurations[9]?.interval == .milliseconds1280)
+        // The response echoes all parameters (Table 7-31).
+        #expect(Array(response.body ?? Data()) == [
+            0x01, 0x02, 0x01, 0x00,
+            0x02, 0x01, 0x02
+        ])
+    }
+
+    @Test
+    func characteristicConfigurationReadsDefaults() {
         var server = makeServer()
-        #expect(
-            server.handle(request(.characteristicConfiguration, iid: 9), isSecured: true, now: now)
-                .status == .unsupportedPDU
+        let response = server.handle(
+            request(.characteristicConfiguration, iid: 9, body: configurationBody()),
+            isSecured: true,
+            now: now
         )
-        #expect(
-            server.handle(request(.protocolConfiguration, iid: 8), isSecured: true, now: now)
-                .status == .unsupportedPDU
+        #expect(response.status == .success)
+        #expect(Array(response.body ?? Data()) == [
+            0x01, 0x02, 0x00, 0x00,   // broadcasts disabled
+            0x02, 0x01, 0x01          // default interval 20 ms
+        ])
+    }
+
+    @Test
+    func characteristicConfigurationRejectsUnsupportedBroadcasts() {
+        var server = makeServer()  // iid 9 does not support broadcast notifications here
+        let response = server.handle(
+            request(.characteristicConfiguration, iid: 9, body: configurationBody(properties: 0x0001)),
+            isSecured: true,
+            now: now
         )
+        #expect(response.status == .invalidRequest)
+    }
+
+    @Test
+    func characteristicConfigurationRejectsReservedBits() {
+        var server = makeBroadcastServer()
+        let response = server.handle(
+            request(.characteristicConfiguration, iid: 9, body: configurationBody(properties: 0x0002)),
+            isSecured: true,
+            now: now
+        )
+        #expect(response.status == .invalidRequest)
+    }
+
+    @Test
+    func characteristicConfigurationRequiresSecureSession() {
+        var server = makeBroadcastServer()
+        let response = server.handle(
+            request(.characteristicConfiguration, iid: 9, body: configurationBody(properties: 0x0001)),
+            isSecured: false,
+            now: now
+        )
+        #expect(response.status == .insufficientAuthentication)
+    }
+
+    // MARK: Protocol Configuration
+
+    func protocolBody(_ types: [UInt8], identifier: Data? = nil) -> Data {
+        var container = TLVContainer()
+        for type in types {
+            container.items.append(TLVItem(
+                type: TLVTypeCode(rawValue: type),
+                value: .init(type == 0x03 ? (identifier ?? Data()) : Data())
+            ))
+        }
+        return Data(container.data)
+    }
+
+    /// The HAP Protocol Information service (iid 20) supports configuration.
+    func makeProtocolServer() -> BLEProcedureServer<MockCharacteristicDataSource, MockBLEConfigurationContext> {
+        var server = makeServer()
+        var accessory = server.accessory
+        accessory.services!.append(Service(
+            iid: 20,
+            serviceType: .hapProtocolInformation,
+            debugDescription: "protocol-information",
+            properties: [.bleSupportsConfiguration]
+        ))
+        server.accessory = accessory
+        return server
+    }
+
+    @Test
+    func protocolConfigurationGetAllParams() {
+        var server = makeProtocolServer()
+        server.configuration.globalStateNumber = 0x1234
+        server.configuration.configurationNumber = 7
+        let response = server.handle(
+            request(.protocolConfiguration, iid: 20, body: protocolBody([0x02])),
+            isSecured: true,
+            now: now
+        )
+        #expect(response.status == .success)
+        #expect(Array(response.body ?? Data()) == [
+            0x01, 0x02, 0x34, 0x12,                              // state number
+            0x02, 0x01, 0x07,                                    // config number
+            0x03, 0x06, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF       // advertising identifier
+        ])
+    }
+
+    @Test
+    func protocolConfigurationGeneratesBroadcastKey() {
+        var server = makeProtocolServer()
+        let response = server.handle(
+            request(.protocolConfiguration, iid: 20, body: protocolBody([0x01])),
+            isSecured: true,
+            now: now
+        )
+        #expect(response.status == .success)
+        #expect(server.configuration.keyGenerations == 1)
+        // The 32-byte key is included as parameter 0x04.
+        let body = Array(response.body ?? Data())
+        #expect(body.suffix(34).prefix(2) == [0x04, 0x20])
+        #expect(Array(body.suffix(32)) == [UInt8](repeating: 0x5A, count: 32))
+    }
+
+    @Test
+    func protocolConfigurationSetsAdvertisingIdentifier() {
+        var server = makeProtocolServer()
+        let identifier = Data([1, 2, 3, 4, 5, 6])
+        let response = server.handle(
+            request(.protocolConfiguration, iid: 20, body: protocolBody([0x03], identifier: identifier)),
+            isSecured: true,
+            now: now
+        )
+        #expect(response.status == .success)
+        #expect(server.configuration.advertisingIdentifier == identifier)
+    }
+
+    @Test
+    func protocolConfigurationRequiresConfigurableService() {
+        var server = makeProtocolServer()
+        // The light bulb service does not have the configuration property.
+        let response = server.handle(
+            request(.protocolConfiguration, iid: 8, body: protocolBody([0x02])),
+            isSecured: true,
+            now: now
+        )
+        #expect(response.status == .invalidInstanceID)
+    }
+
+    @Test
+    func protocolConfigurationRequiresSecureSession() {
+        var server = makeProtocolServer()
+        let response = server.handle(
+            request(.protocolConfiguration, iid: 20, body: protocolBody([0x02])),
+            isSecured: false,
+            now: now
+        )
+        #expect(response.status == .insufficientAuthentication)
     }
 
     // MARK: Transaction IDs
