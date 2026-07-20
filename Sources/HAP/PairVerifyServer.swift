@@ -11,6 +11,12 @@ public struct PairVerifyResult: Equatable, Hashable, Sendable {
     /// The `Pair-Verify-Encrypt` session key used during verification.
     public let sessionKey: Data
 
+    public init(controllerIdentifier: String, sharedSecret: Data, sessionKey: Data) {
+        self.controllerIdentifier = controllerIdentifier
+        self.sharedSecret = sharedSecret
+        self.sessionKey = sessionKey
+    }
+
     /// Derives the session security keys for HAP over IP (§6.5.2).
     ///
     /// - Returns: The `AccessoryToControllerKey` (accessory sends / controller reads) and
