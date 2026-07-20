@@ -1,4 +1,3 @@
-import FoundationEmbedded
 @testable import HAP
 
 /// A crypto provider for tests backed by canned known-answer values.
