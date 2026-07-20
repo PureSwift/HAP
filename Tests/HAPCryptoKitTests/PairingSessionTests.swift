@@ -1,7 +1,6 @@
 import Testing
 import BigInt
 import Foundation
-import FoundationEmbedded
 import HAP
 @testable import HAPCryptoKit
 
@@ -15,8 +14,8 @@ struct PairingSessionTests {
     let accessoryIdentifier = "AA:BB:CC:DD:EE:FF"
     let controllerIdentifier = "E9E23DA1-3DDC-4A54-9F46-8663FB4CE1F1"
 
-    var setupSalt: FoundationEmbedded.Data {
-        FoundationEmbedded.Data(CryptoTestVectors.srpSalt)
+    var setupSalt: Data {
+        Data(CryptoTestVectors.srpSalt)
     }
 
     // MARK: Controller-side SRP
@@ -64,7 +63,7 @@ struct PairingSessionTests {
         return ControllerSRP(publicKey: publicKey, sessionKey: sessionKey, proof: proof)
     }
 
-    func makePairSetupServer(secretKey: FoundationEmbedded.Data) -> PairSetupServer<SwiftCryptoProvider> {
+    func makePairSetupServer(secretKey: Data) -> PairSetupServer<SwiftCryptoProvider> {
         PairSetupServer(
             crypto: provider,
             accessoryIdentifier: accessoryIdentifier,
@@ -104,8 +103,8 @@ struct PairingSessionTests {
         )
         var m3 = PairingTLV()
         m3.append(integer: 3, for: .state)
-        m3.append(FoundationEmbedded.Data(client.publicKey), for: .publicKey)
-        m3.append(FoundationEmbedded.Data(client.proof), for: .proof)
+        m3.append(Data(client.publicKey), for: .publicKey)
+        m3.append(Data(client.proof), for: .proof)
         let m4 = server.handle(m3)
         #expect(m4.state == 4)
         #expect(m4.error == nil)
@@ -115,17 +114,17 @@ struct PairingSessionTests {
 
         // M5: Exchange Request with the controller's identity.
         let sessionKey = provider.hkdfSHA512(
-            inputKeyMaterial: FoundationEmbedded.Data(client.sessionKey),
-            salt: FoundationEmbedded.Data(Array("Pair-Setup-Encrypt-Salt".utf8)),
-            info: FoundationEmbedded.Data(Array("Pair-Setup-Encrypt-Info".utf8)),
+            inputKeyMaterial: Data(client.sessionKey),
+            salt: Data(Array("Pair-Setup-Encrypt-Salt".utf8)),
+            info: Data(Array("Pair-Setup-Encrypt-Info".utf8)),
             outputByteCount: 32
         )
         let controllerSecretKey = provider.makeEd25519PrivateKey()
         let controllerPublicKey = provider.ed25519PublicKey(for: controllerSecretKey)
         let controllerX = provider.hkdfSHA512(
-            inputKeyMaterial: FoundationEmbedded.Data(client.sessionKey),
-            salt: FoundationEmbedded.Data(Array("Pair-Setup-Controller-Sign-Salt".utf8)),
-            info: FoundationEmbedded.Data(Array("Pair-Setup-Controller-Sign-Info".utf8)),
+            inputKeyMaterial: Data(client.sessionKey),
+            salt: Data(Array("Pair-Setup-Controller-Sign-Salt".utf8)),
+            info: Data(Array("Pair-Setup-Controller-Sign-Info".utf8)),
             outputByteCount: 32
         )
         var controllerInfo = controllerX
@@ -144,8 +143,8 @@ struct PairingSessionTests {
             try provider.seal(
                 subTLV.data,
                 key: sessionKey,
-                nonce: FoundationEmbedded.Data(Array("PS-Msg05".utf8)),
-                authenticatedData: FoundationEmbedded.Data()
+                nonce: Data(Array("PS-Msg05".utf8)),
+                authenticatedData: Data()
             ),
             for: .encryptedData
         )
@@ -164,17 +163,17 @@ struct PairingSessionTests {
         let decrypted = try provider.open(
             try #require(m6[.encryptedData]),
             key: sessionKey,
-            nonce: FoundationEmbedded.Data(Array("PS-Msg06".utf8)),
-            authenticatedData: FoundationEmbedded.Data()
+            nonce: Data(Array("PS-Msg06".utf8)),
+            authenticatedData: Data()
         )
         let accessoryTLV = try #require(PairingTLV(data: decrypted))
         #expect(accessoryTLV.string(for: .identifier) == accessoryIdentifier)
         let accessoryPublicKey = try #require(accessoryTLV[.publicKey])
         #expect(accessoryPublicKey == provider.ed25519PublicKey(for: accessorySecretKey))
         let accessoryX = provider.hkdfSHA512(
-            inputKeyMaterial: FoundationEmbedded.Data(client.sessionKey),
-            salt: FoundationEmbedded.Data(Array("Pair-Setup-Accessory-Sign-Salt".utf8)),
-            info: FoundationEmbedded.Data(Array("Pair-Setup-Accessory-Sign-Info".utf8)),
+            inputKeyMaterial: Data(client.sessionKey),
+            salt: Data(Array("Pair-Setup-Accessory-Sign-Salt".utf8)),
+            info: Data(Array("Pair-Setup-Accessory-Sign-Info".utf8)),
             outputByteCount: 32
         )
         var accessoryInfo = accessoryX
@@ -204,8 +203,8 @@ struct PairingSessionTests {
         )
         var m3 = PairingTLV()
         m3.append(integer: 3, for: .state)
-        m3.append(FoundationEmbedded.Data(client.publicKey), for: .publicKey)
-        m3.append(FoundationEmbedded.Data(client.proof), for: .proof)
+        m3.append(Data(client.publicKey), for: .publicKey)
+        m3.append(Data(client.proof), for: .proof)
         let m4 = server.handle(m3)
         #expect(m4.state == 4)
         #expect(m4.error == .authentication)
@@ -249,15 +248,15 @@ struct PairingSessionTests {
         )
         let sessionKey = provider.hkdfSHA512(
             inputKeyMaterial: sharedSecret,
-            salt: FoundationEmbedded.Data(Array("Pair-Verify-Encrypt-Salt".utf8)),
-            info: FoundationEmbedded.Data(Array("Pair-Verify-Encrypt-Info".utf8)),
+            salt: Data(Array("Pair-Verify-Encrypt-Salt".utf8)),
+            info: Data(Array("Pair-Verify-Encrypt-Info".utf8)),
             outputByteCount: 32
         )
         let decrypted = try provider.open(
             try #require(m2[.encryptedData]),
             key: sessionKey,
-            nonce: FoundationEmbedded.Data(Array("PV-Msg02".utf8)),
-            authenticatedData: FoundationEmbedded.Data()
+            nonce: Data(Array("PV-Msg02".utf8)),
+            authenticatedData: Data()
         )
         let accessoryTLV = try #require(PairingTLV(data: decrypted))
         #expect(accessoryTLV.string(for: .identifier) == accessoryIdentifier)
@@ -286,8 +285,8 @@ struct PairingSessionTests {
             try provider.seal(
                 subTLV.data,
                 key: sessionKey,
-                nonce: FoundationEmbedded.Data(Array("PV-Msg03".utf8)),
-                authenticatedData: FoundationEmbedded.Data()
+                nonce: Data(Array("PV-Msg03".utf8)),
+                authenticatedData: Data()
             ),
             for: .encryptedData
         )
@@ -304,8 +303,8 @@ struct PairingSessionTests {
         let keys = result.controlChannelKeys(using: provider)
         #expect(keys.accessoryToController == provider.hkdfSHA512(
             inputKeyMaterial: sharedSecret,
-            salt: FoundationEmbedded.Data(Array("Control-Salt".utf8)),
-            info: FoundationEmbedded.Data(Array("Control-Read-Encryption-Key".utf8)),
+            salt: Data(Array("Control-Salt".utf8)),
+            info: Data(Array("Control-Read-Encryption-Key".utf8)),
             outputByteCount: 32
         ))
         #expect(keys.accessoryToController != keys.controllerToAccessory)
@@ -330,21 +329,21 @@ struct PairingSessionTests {
         )
         let sessionKey = provider.hkdfSHA512(
             inputKeyMaterial: sharedSecret,
-            salt: FoundationEmbedded.Data(Array("Pair-Verify-Encrypt-Salt".utf8)),
-            info: FoundationEmbedded.Data(Array("Pair-Verify-Encrypt-Info".utf8)),
+            salt: Data(Array("Pair-Verify-Encrypt-Salt".utf8)),
+            info: Data(Array("Pair-Verify-Encrypt-Info".utf8)),
             outputByteCount: 32
         )
         var subTLV = PairingTLV()
         subTLV.append(string: "unknown-controller", for: .identifier)
-        subTLV.append(FoundationEmbedded.Data([UInt8](repeating: 0, count: 64)), for: .signature)
+        subTLV.append(Data([UInt8](repeating: 0, count: 64)), for: .signature)
         var m3 = PairingTLV()
         m3.append(integer: 3, for: .state)
         m3.append(
             try provider.seal(
                 subTLV.data,
                 key: sessionKey,
-                nonce: FoundationEmbedded.Data(Array("PV-Msg03".utf8)),
-                authenticatedData: FoundationEmbedded.Data()
+                nonce: Data(Array("PV-Msg03".utf8)),
+                authenticatedData: Data()
             ),
             for: .encryptedData
         )
