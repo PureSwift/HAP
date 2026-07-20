@@ -1,4 +1,3 @@
-import Foundation
 
 /// A HomeKit accessory.
 public struct Accessory {
