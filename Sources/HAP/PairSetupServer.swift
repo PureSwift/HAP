@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// The controller pairing established by a successful Pair Setup.
 public struct PairSetupResult: Equatable, Hashable, Sendable {
