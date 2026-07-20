@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// A HomeKit characteristic that carries an opaque data blob.
 public struct DataCharacteristic {
