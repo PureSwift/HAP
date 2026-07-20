@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// Persistent storage of controller pairings, backed by a platform ``KeyValueStore``.
 ///
