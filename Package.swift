@@ -24,6 +24,11 @@ let package = Package(
             from: "7.5.1"
         ),
         .package(
+            url: "https://github.com/PureSwift/GATT.git",
+            from: "3.4.1",
+            traits: ["BluetoothGATT"]
+        ),
+        .package(
             url: "https://github.com/PureSwift/TLVCoding.git",
             from: "3.0.0"
         ),
@@ -42,13 +47,17 @@ let package = Package(
                 .product(name: "Bluetooth", package: "Bluetooth"),
                 .product(name: "BluetoothGAP", package: "Bluetooth"),
                 .product(name: "BluetoothGATT", package: "Bluetooth"),
+                .product(name: "GATT", package: "GATT"),
                 .product(name: "TLVCoding", package: "TLVCoding"),
                 .product(name: "FoundationEmbedded", package: "swift-embedded-foundation")
             ]
         ),
         .testTarget(
             name: "HAPTests",
-            dependencies: ["HAP"]
+            dependencies: [
+                "HAP",
+                .product(name: "FoundationEmbedded", package: "swift-embedded-foundation")
+            ]
         ),
     ]
 )
