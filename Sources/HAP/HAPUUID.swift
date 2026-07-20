@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// A HomeKit UUID identifying a service or characteristic type.
 ///
