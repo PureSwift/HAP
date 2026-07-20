@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// The server side of an SRP-6a session (3072-bit group, SHA-512).
 ///
