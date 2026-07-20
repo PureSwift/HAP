@@ -6,7 +6,7 @@
 /// Use ``init(milliseconds:)`` to construct a value from a human-readable duration.
 ///
 /// - Note: Corresponds to the C `HAPBLEAdvertisingInterval` type (`uint16_t`).
-public struct BLEAdvertisingInterval: RawRepresentable, Equatable, Comparable {
+public struct BLEAdvertisingInterval: RawRepresentable, Equatable, Comparable, Sendable {
     /// Raw value in units of 0.625 ms.
     public let rawValue: UInt16
 
