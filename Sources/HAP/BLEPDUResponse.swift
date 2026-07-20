@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// A HAP-BLE response PDU.
 ///
