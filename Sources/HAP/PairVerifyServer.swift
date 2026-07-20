@@ -1,4 +1,3 @@
-import FoundationEmbedded
 
 /// The secure session established by a successful Pair Verify.
 public struct PairVerifyResult: Equatable, Hashable, Sendable {
