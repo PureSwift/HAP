@@ -1,7 +1,6 @@
 import Testing
 import BigInt
 import Foundation
-import FoundationEmbedded
 import HAP
 @testable import HAPCryptoKit
 
@@ -12,9 +11,9 @@ struct SRPTests {
     func makeServer() -> SRP6aServer {
         SRP6aServer(
             username: CryptoTestVectors.srpUsername,
-            salt: FoundationEmbedded.Data(CryptoTestVectors.srpSalt),
-            verifier: FoundationEmbedded.Data(CryptoTestVectors.srpVerifier),
-            privateKey: FoundationEmbedded.Data(CryptoTestVectors.srpServerPrivateKey)
+            salt: Data(CryptoTestVectors.srpSalt),
+            verifier: Data(CryptoTestVectors.srpVerifier),
+            privateKey: Data(CryptoTestVectors.srpServerPrivateKey)
         )
     }
 
@@ -47,7 +46,7 @@ struct SRPTests {
     func sessionKey() throws {
         var server = makeServer()
         try server.processClientPublicKey(
-            FoundationEmbedded.Data(CryptoTestVectors.srpClientPublicKey)
+            Data(CryptoTestVectors.srpClientPublicKey)
         )
         #expect(Array(server.sessionKey) == CryptoTestVectors.srpSessionKey)
     }
@@ -56,10 +55,10 @@ struct SRPTests {
     func proofs() throws {
         var server = makeServer()
         try server.processClientPublicKey(
-            FoundationEmbedded.Data(CryptoTestVectors.srpClientPublicKey)
+            Data(CryptoTestVectors.srpClientPublicKey)
         )
         let serverProof = try server.verifyClientProof(
-            FoundationEmbedded.Data(CryptoTestVectors.srpProofM1)
+            Data(CryptoTestVectors.srpProofM1)
         )
         #expect(Array(serverProof) == CryptoTestVectors.srpProofM2)
     }
@@ -68,12 +67,12 @@ struct SRPTests {
     func rejectsInvalidProof() throws {
         var server = makeServer()
         try server.processClientPublicKey(
-            FoundationEmbedded.Data(CryptoTestVectors.srpClientPublicKey)
+            Data(CryptoTestVectors.srpClientPublicKey)
         )
         var wrongProof = CryptoTestVectors.srpProofM1
         wrongProof[0] ^= 0xFF
         #expect(throws: HAPError.notAuthorized) {
-            try server.verifyClientProof(FoundationEmbedded.Data(wrongProof))
+            try server.verifyClientProof(Data(wrongProof))
         }
     }
 
@@ -82,10 +81,10 @@ struct SRPTests {
         var server = makeServer()
         // A mod N == 0 must be rejected (RFC 5054, Section 2.5.4).
         #expect(throws: HAPError.invalidData) {
-            try server.processClientPublicKey(FoundationEmbedded.Data(SRPGroup.primeBytes))
+            try server.processClientPublicKey(Data(SRPGroup.primeBytes))
         }
         #expect(throws: HAPError.invalidData) {
-            try server.processClientPublicKey(FoundationEmbedded.Data([0x00]))
+            try server.processClientPublicKey(Data([0x00]))
         }
     }
 
@@ -93,7 +92,7 @@ struct SRPTests {
     func rejectsProofBeforeClientKey() {
         var server = makeServer()
         #expect(throws: HAPError.invalidState) {
-            try server.verifyClientProof(FoundationEmbedded.Data(CryptoTestVectors.srpProofM1))
+            try server.verifyClientProof(Data(CryptoTestVectors.srpProofM1))
         }
     }
 
@@ -101,7 +100,7 @@ struct SRPTests {
     @Test
     func randomExchange() throws {
         let provider = SwiftCryptoProvider()
-        let salt = FoundationEmbedded.Data(CryptoTestVectors.srpSalt)
+        let salt = Data(CryptoTestVectors.srpSalt)
         let verifier = provider.srpVerifier(
             username: "Pair-Setup",
             password: "101-48-005",
@@ -118,7 +117,7 @@ struct SRPTests {
         let clientPublicKey = SRP6a.padded(
             SRP6a.generator.power(clientPrivateKey, modulus: SRP6a.prime)
         )
-        try server.processClientPublicKey(FoundationEmbedded.Data(clientPublicKey))
+        try server.processClientPublicKey(Data(clientPublicKey))
 
         // Client computes the same session key.
         let scrambling = BigUIntFromBytes(
