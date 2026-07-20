@@ -69,23 +69,16 @@ let package = Package(
             dependencies: [
                 "HAP",
                 .product(name: "Crypto", package: "swift-crypto"),
-                .product(name: "BigInt", package: "BigInt"),
-                .product(name: "FoundationEmbedded", package: "swift-embedded-foundation")
+                .product(name: "BigInt", package: "BigInt")
             ]
         ),
         .testTarget(
             name: "HAPCryptoKitTests",
-            dependencies: [
-                "HAPCryptoKit",
-                .product(name: "FoundationEmbedded", package: "swift-embedded-foundation")
-            ]
+            dependencies: ["HAPCryptoKit"]
         ),
         .testTarget(
             name: "HAPTests",
-            dependencies: [
-                "HAP",
-                .product(name: "FoundationEmbedded", package: "swift-embedded-foundation")
-            ]
+            dependencies: ["HAP"]
         ),
     ]
 )
