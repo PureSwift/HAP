@@ -1,7 +1,6 @@
 import BigInt
 import Crypto
 import Foundation
-import FoundationEmbedded
 import HAP
 
 /// SRP-6a operations for HAP Pair Setup: the 3072-bit group from RFC 5054 with SHA-512.
@@ -76,10 +75,10 @@ internal extension SRP6a {
 public struct SRP6aServer: SRPServer {
 
     /// The server's public key `B`, zero-padded to 384 bytes.
-    public let publicKey: FoundationEmbedded.Data
+    public let publicKey: Data
 
     /// The session key `K`. Only valid after ``processClientPublicKey(_:)`` has succeeded.
-    public private(set) var sessionKey: FoundationEmbedded.Data
+    public private(set) var sessionKey: Data
 
     let username: [UInt8]
     let salt: [UInt8]
@@ -93,9 +92,9 @@ public struct SRP6aServer: SRPServer {
     ///   a session with a random private key.
     public init(
         username: String,
-        salt: FoundationEmbedded.Data,
-        verifier: FoundationEmbedded.Data,
-        privateKey: FoundationEmbedded.Data
+        salt: Data,
+        verifier: Data,
+        privateKey: Data
     ) {
         self.username = Array(username.utf8)
         self.salt = Array(salt)
@@ -104,12 +103,12 @@ public struct SRP6aServer: SRPServer {
         // B = (k*v + g^b) mod N
         let gb = SRP6a.generator.power(self.privateKey, modulus: SRP6a.prime)
         let kv = (SRP6a.multiplier() * self.verifier) % SRP6a.prime
-        self.publicKey = FoundationEmbedded.Data(SRP6a.padded((gb + kv) % SRP6a.prime))
-        self.sessionKey = FoundationEmbedded.Data()
+        self.publicKey = Data(SRP6a.padded((gb + kv) % SRP6a.prime))
+        self.sessionKey = Data()
     }
 
     public mutating func processClientPublicKey(
-        _ clientPublicKey: FoundationEmbedded.Data
+        _ clientPublicKey: Data
     ) throws(HAPError) {
         let clientKeyBytes = Array(clientPublicKey)
         guard clientKeyBytes.count <= SRP6a.primeByteCount else {
@@ -129,15 +128,15 @@ public struct SRP6aServer: SRPServer {
         let base = (clientKey * verifier.power(scrambling, modulus: SRP6a.prime)) % SRP6a.prime
         let premasterSecret = base.power(privateKey, modulus: SRP6a.prime)
         // K = H(S), leading zeros stripped (minimal serialization).
-        self.sessionKey = FoundationEmbedded.Data(
+        self.sessionKey = Data(
             SRP6a.sha512([Array(premasterSecret.serialize())])
         )
         self.clientPublicKey = paddedClientKey
     }
 
     public mutating func verifyClientProof(
-        _ clientProof: FoundationEmbedded.Data
-    ) throws(HAPError) -> FoundationEmbedded.Data {
+        _ clientProof: Data
+    ) throws(HAPError) -> Data {
         guard let paddedClientKey = clientPublicKey, !sessionKey.isEmpty else {
             throw .invalidState
         }
@@ -168,6 +167,6 @@ public struct SRP6aServer: SRPServer {
             throw .notAuthorized
         }
         // M2 = H(PAD(A) ‖ M1 ‖ K)
-        return FoundationEmbedded.Data(SRP6a.sha512([paddedClientKey, expected, key]))
+        return Data(SRP6a.sha512([paddedClientKey, expected, key]))
     }
 }
