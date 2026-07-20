@@ -1,3 +1,4 @@
+import FoundationEmbedded
 /// A write request for a data characteristic.
 public struct DataCharacteristicWriteRequest {
     /// Transport type over which the request has been received.
