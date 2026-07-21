@@ -7,7 +7,7 @@ jobs:
     name: macOS
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
       - name: Swift Version
@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     container: swift:6.3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Swift Version
         run: swift --version
       - name: Build
@@ -34,7 +34,7 @@ jobs:
     name: Example (macOS)
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
       - name: Build
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     container: swift:6.3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install BlueZ headers
         run: apt-get update && apt-get install -y libbluetooth-dev
       - name: Build
