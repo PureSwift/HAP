@@ -194,6 +194,65 @@ struct BLEPeripheralServerTests {
         #expect(server.writes.isEmpty)
     }
 
+    // MARK: Advertising
+
+    @Test
+    func advertisingStopsWhileConnectedAndResumes() throws {
+        let (binding, peripheral, _) = try makeBinding()
+        try binding.updateAdvertising()
+        #expect(peripheral.isAdvertising)
+        #expect(peripheral.advertisements.count == 1)
+        // The advertisement carries the accessory's state and name.
+        #expect(peripheral.advertisements[0].localName == "Light")
+
+        // An accessory must not advertise while a controller is connected.
+        peripheral.simulateConnect(central)
+        #expect(!peripheral.isAdvertising)
+
+        // Advertising is a no-op while connected, even if asked.
+        try binding.updateAdvertising()
+        #expect(!peripheral.isAdvertising)
+        #expect(peripheral.advertisements.count == 1)
+
+        // Disconnecting resumes advertising with fresh state.
+        peripheral.simulateDisconnect(central)
+        #expect(peripheral.isAdvertising)
+        #expect(peripheral.advertisements.count == 2)
+    }
+
+    @Test
+    func failedWriteDisconnectsCentral() throws {
+        let (binding, peripheral, server) = try makeBinding()
+        defer { _ = binding }
+        peripheral.simulateConnect(central)
+        let handle = try #require(peripheral.handle(forInstanceID: 0x33))
+
+        server.writeError = .notAuthorized
+        peripheral.simulateWrite([0x00], handle: handle, from: central)
+        // The peripheral is asked to drop the central, and advertising resumes.
+        #expect(peripheral.disconnected.map(\.id) == [central.id])
+        #expect(peripheral.isAdvertising)
+    }
+
+    /// A stack without the HAP capabilities still works; the features report the gap.
+    @Test
+    func degradedPeripheralReportsCapabilities() throws {
+        let (binding, peripheral, _) = try makeBinding()
+        peripheral.supportedFeatures = []
+        #expect(!peripheral.canAdvertiseAccessoryState)
+        #expect(!peripheral.canBroadcastEvents)
+
+        // Advertising and connections still function.
+        try binding.updateAdvertising()
+        peripheral.simulateConnect(central)
+        #expect(binding.isConnected)
+
+        // A fully capable stack reports both.
+        peripheral.supportedFeatures = .all
+        #expect(peripheral.canAdvertiseAccessoryState)
+        #expect(peripheral.canBroadcastEvents)
+    }
+
     @Test
     func advertisementDataIsForwarded() throws {
         let (binding, _, _) = try makeBinding()
