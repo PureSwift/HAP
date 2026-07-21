@@ -67,6 +67,34 @@ public struct UInt8CharacteristicSubscriptionRequest {
 
 /// A HomeKit characteristic that carries an unsigned 8-bit integer value.
 public struct UInt8Characteristic {
+
+    /// Creates a characteristic.
+    public init(
+        iid: UInt64,
+        characteristicType: HAPUUID,
+        debugDescription: String,
+        manufacturerDescription: String? = nil,
+        properties: CharacteristicProperties,
+        units: CharacteristicUnits,
+        minimumValue: UInt8,
+        maximumValue: UInt8,
+        stepValue: UInt8,
+        validValues: [UInt8]? = nil,
+        validValuesRanges: [ClosedRange<UInt8>]? = nil
+    ) {
+        self.iid = iid
+        self.characteristicType = characteristicType
+        self.debugDescription = debugDescription
+        self.manufacturerDescription = manufacturerDescription
+        self.properties = properties
+        self.units = units
+        self.minimumValue = minimumValue
+        self.maximumValue = maximumValue
+        self.stepValue = stepValue
+        self.validValues = validValues
+        self.validValuesRanges = validValuesRanges
+    }
+
     /// Instance ID.
     public var iid: UInt64
 
