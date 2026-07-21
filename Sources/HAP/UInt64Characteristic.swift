@@ -67,6 +67,30 @@ public struct UInt64CharacteristicSubscriptionRequest {
 
 /// A HomeKit characteristic that carries an unsigned 64-bit integer value.
 public struct UInt64Characteristic {
+
+    /// Creates a characteristic.
+    public init(
+        iid: UInt64,
+        characteristicType: HAPUUID,
+        debugDescription: String,
+        manufacturerDescription: String? = nil,
+        properties: CharacteristicProperties,
+        units: CharacteristicUnits,
+        minimumValue: UInt64,
+        maximumValue: UInt64,
+        stepValue: UInt64
+    ) {
+        self.iid = iid
+        self.characteristicType = characteristicType
+        self.debugDescription = debugDescription
+        self.manufacturerDescription = manufacturerDescription
+        self.properties = properties
+        self.units = units
+        self.minimumValue = minimumValue
+        self.maximumValue = maximumValue
+        self.stepValue = stepValue
+    }
+
     /// Instance ID.
     public var iid: UInt64
 
