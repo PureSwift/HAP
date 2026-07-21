@@ -67,6 +67,22 @@ public struct TLV8CharacteristicSubscriptionRequest {
 
 /// A HomeKit characteristic that carries one or more TLV8-encoded values.
 public struct TLV8Characteristic {
+
+    /// Creates a characteristic.
+    public init(
+        iid: UInt64,
+        characteristicType: HAPUUID,
+        debugDescription: String,
+        manufacturerDescription: String? = nil,
+        properties: CharacteristicProperties
+    ) {
+        self.iid = iid
+        self.characteristicType = characteristicType
+        self.debugDescription = debugDescription
+        self.manufacturerDescription = manufacturerDescription
+        self.properties = properties
+    }
+
     /// Instance ID.
     public var iid: UInt64
 
