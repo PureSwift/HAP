@@ -67,6 +67,30 @@ public struct FloatCharacteristicSubscriptionRequest {
 
 /// A HomeKit characteristic that carries a 32-bit floating point value.
 public struct FloatCharacteristic {
+
+    /// Creates a characteristic.
+    public init(
+        iid: UInt64,
+        characteristicType: HAPUUID,
+        debugDescription: String,
+        manufacturerDescription: String? = nil,
+        properties: CharacteristicProperties,
+        units: CharacteristicUnits,
+        minimumValue: Float,
+        maximumValue: Float,
+        stepValue: Float
+    ) {
+        self.iid = iid
+        self.characteristicType = characteristicType
+        self.debugDescription = debugDescription
+        self.manufacturerDescription = manufacturerDescription
+        self.properties = properties
+        self.units = units
+        self.minimumValue = minimumValue
+        self.maximumValue = maximumValue
+        self.stepValue = stepValue
+    }
+
     /// Instance ID.
     public var iid: UInt64
 
