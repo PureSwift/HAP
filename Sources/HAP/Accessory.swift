@@ -1,6 +1,30 @@
 
 /// A HomeKit accessory.
 public struct Accessory {
+
+    /// Creates an accessory.
+    public init(
+        aid: UInt64,
+        category: AccessoryCategory,
+        name: String,
+        manufacturer: String,
+        model: String,
+        serialNumber: String,
+        firmwareVersion: String,
+        hardwareVersion: String? = nil,
+        services: [Service]? = nil
+    ) {
+        self.aid = aid
+        self.category = category
+        self.name = name
+        self.manufacturer = manufacturer
+        self.model = model
+        self.serialNumber = serialNumber
+        self.firmwareVersion = firmwareVersion
+        self.hardwareVersion = hardwareVersion
+        self.services = services
+    }
+
     /// Accessory instance ID.
     ///
     /// - For regular accessories (IP / BLE): must be 1.
