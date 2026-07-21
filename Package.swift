@@ -25,11 +25,11 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/PureSwift/Bluetooth.git",
-            from: "7.5.1"
+            from: "8.0.0"
         ),
         .package(
             url: "https://github.com/PureSwift/GATT.git",
-            from: "3.4.1",
+            from: "4.0.0",
             traits: ["BluetoothGATT"]
         ),
         .package(
