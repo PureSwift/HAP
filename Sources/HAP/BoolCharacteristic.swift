@@ -67,6 +67,22 @@ public struct BoolCharacteristicSubscriptionRequest {
 
 /// A HomeKit characteristic that carries a Boolean value.
 public struct BoolCharacteristic {
+
+    /// Creates a characteristic.
+    public init(
+        iid: UInt64,
+        characteristicType: HAPUUID,
+        debugDescription: String,
+        manufacturerDescription: String? = nil,
+        properties: CharacteristicProperties
+    ) {
+        self.iid = iid
+        self.characteristicType = characteristicType
+        self.debugDescription = debugDescription
+        self.manufacturerDescription = manufacturerDescription
+        self.properties = properties
+    }
+
     /// Instance ID.
     public var iid: UInt64
 
