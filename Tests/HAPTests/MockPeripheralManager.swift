@@ -2,7 +2,7 @@ import GATT
 @testable import HAP
 
 /// An in-memory `PeripheralManager` for testing transport bindings without a Bluetooth stack.
-final class MockPeripheralManager: PeripheralManager, @unchecked Sendable {
+final class MockPeripheralManager: HAPPeripheralManager, @unchecked Sendable {
 
     typealias Central = GATT.Central
     typealias Data = [UInt8]
@@ -16,7 +16,7 @@ final class MockPeripheralManager: PeripheralManager, @unchecked Sendable {
     var didDisconnect: ((Central) -> ())?
     var didConfirm: ((Central, UInt16) -> ())?
 
-    private(set) var isAdvertising = false
+    var isAdvertising = false
     private(set) var values: [UInt16: Data] = [:]
     private(set) var addedServices: [GATTAttribute<Data>.Service] = []
 
@@ -24,6 +24,30 @@ final class MockPeripheralManager: PeripheralManager, @unchecked Sendable {
     private(set) var notifications: [(handle: UInt16, value: Data)] = []
 
     private var nextHandle: UInt16 = 1
+
+    // MARK: HAP Peripheral
+
+    /// The capabilities this mock reports; defaults to a fully capable stack.
+    var supportedFeatures: HAPPeripheralFeature = .all
+
+    /// Advertisements passed to `startAdvertising(_:)`, in order.
+    private(set) var advertisements: [HAPAdvertisement] = []
+
+    /// Centrals passed to `disconnect(_:)`, in order.
+    private(set) var disconnected: [Central] = []
+
+    func startAdvertising(_ advertisement: HAPAdvertisement) throws(Error) {
+        advertisements.append(advertisement)
+        isAdvertising = true
+    }
+
+    func stopAdvertising() throws(Error) {
+        isAdvertising = false
+    }
+
+    func disconnect(_ central: Central) throws(Error) {
+        disconnected.append(central)
+    }
 
     func start() throws(Error) {
         isAdvertising = true
