@@ -3,6 +3,7 @@ import Foundation
 import GATT
 import HAP
 import HAPCryptoKit
+import POSIXHAP
 
 #if os(Linux)
 import BluetoothLinux

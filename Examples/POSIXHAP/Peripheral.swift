@@ -11,7 +11,7 @@ import BluetoothLinux
 #if canImport(Darwin)
 
 /// The platform peripheral on Apple platforms.
-typealias NativePeripheral = DarwinPeripheral
+public typealias NativePeripheral = DarwinPeripheral
 
 /// CoreBluetooth cannot broadcast manufacturer-specific data and cannot disconnect a
 /// central, so this conformance reports neither capability and emulates what it can.
@@ -49,7 +49,7 @@ extension DarwinPeripheral: @retroactive HAPPeripheralManager {
 #elseif os(Linux)
 
 /// The platform peripheral on Linux, backed by BlueZ sockets.
-typealias NativePeripheral = GATTPeripheral<
+public typealias NativePeripheral = GATTPeripheral<
     BluetoothLinux.HostController,
     BluetoothLinux.L2CAPSocket.Server
 >

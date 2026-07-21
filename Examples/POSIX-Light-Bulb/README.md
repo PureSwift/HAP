@@ -21,6 +21,7 @@ drives, so the lamp appears with a full colour wheel.
 ## Running
 
 ```sh
+cd Examples
 swift run posix-light-bulb --setup-code 518-08-582 --name "Desk Lamp"
 ```
 
@@ -38,15 +39,14 @@ lamp: on · brightness 80% · hue 210° · saturation 45%
 
 | Piece | File | Role |
 | --- | --- | --- |
-| Attribute database | [`LightBulb.swift`](Sources/POSIXLightBulb/LightBulb.swift) | Light Bulb service with colour characteristics |
-| Value handling | [`LightBulb.swift`](Sources/POSIXLightBulb/LightBulb.swift) | `CharacteristicDataSource` holding lamp state |
-| Platform abstraction | [`POSIXPlatform.swift`](Sources/POSIXLightBulb/POSIXPlatform.swift) | Monotonic clock, random source, file-backed key-value store |
-| Bluetooth transport | [`Peripheral.swift`](Sources/POSIXLightBulb/Peripheral.swift) | `HAPPeripheralManager` conformance per platform |
-| Wiring | [`main.swift`](Sources/POSIXLightBulb/main.swift) | Composition and run loop |
+| Attribute database | [`LightBulb.swift`](LightBulb.swift) | Light Bulb service with colour characteristics |
+| Value handling | [`LightBulb.swift`](LightBulb.swift) | `CharacteristicDataSource` holding lamp state |
+| Platform abstraction | [`POSIXPlatform.swift`](../POSIXHAP/POSIXPlatform.swift) | Monotonic clock, random source, file-backed key-value store |
+| Bluetooth transport | [`Peripheral.swift`](../POSIXHAP/Peripheral.swift) | `HAPPeripheralManager` conformance per platform |
+| Wiring | [`main.swift`](main.swift) | Composition and run loop |
 
-The platform and transport files are copied verbatim from the smart lock example so that
-each example stands alone and can be lifted into a project without untangling a shared
-library.
+The platform and transport pieces live in the shared `POSIXHAP` library, so both examples
+share one implementation.
 
 ## Platform differences
 

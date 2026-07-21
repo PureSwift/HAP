@@ -30,31 +30,25 @@ jobs:
       - name: Test
         run: swift test
 
-  example-macos:
-    name: ${{ matrix.example }} (macOS)
+  examples-macos:
+    name: Examples (macOS)
     runs-on: macos-26
-    strategy:
-      matrix:
-        example: [POSIX-Smart-Lock, POSIX-Light-Bulb]
     steps:
       - uses: actions/checkout@v5
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
       - name: Build
-        working-directory: Examples/${{ matrix.example }}
+        working-directory: Examples
         run: swift build
 
-  example-linux:
-    name: ${{ matrix.example }} (Linux)
+  examples-linux:
+    name: Examples (Linux)
     runs-on: ubuntu-latest
     container: swift:6.3
-    strategy:
-      matrix:
-        example: [POSIX-Smart-Lock, POSIX-Light-Bulb]
     steps:
       - uses: actions/checkout@v5
       - name: Install BlueZ headers
         run: apt-get update && apt-get install -y libbluetooth-dev
       - name: Build
-        working-directory: Examples/${{ matrix.example }}
+        working-directory: Examples
         run: swift build

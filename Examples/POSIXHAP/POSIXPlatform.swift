@@ -10,9 +10,12 @@ import Glibc
 /// A monotonic clock backed by `clock_gettime(CLOCK_MONOTONIC)`.
 ///
 /// - Note: Mirrors `HAPPlatformClock` from the ADK.
-final class POSIXClock: PlatformClock, @unchecked Sendable {
+public final class POSIXClock: PlatformClock, @unchecked Sendable {
 
-    var now: HAPTime {
+    public init() {}
+
+
+    public var now: HAPTime {
         var time = timespec()
         clock_gettime(CLOCK_MONOTONIC, &time)
         let milliseconds = UInt64(time.tv_sec) * 1000 + UInt64(time.tv_nsec) / 1_000_000
@@ -23,9 +26,12 @@ final class POSIXClock: PlatformClock, @unchecked Sendable {
 // MARK: -
 
 /// A cryptographically secure random source backed by the system generator.
-struct POSIXRandom: RandomNumberSource {
+public struct POSIXRandom: RandomNumberSource {
 
-    func fill(_ buffer: inout [UInt8]) {
+    public init() {}
+
+
+    public func fill(_ buffer: inout [UInt8]) {
         var generator = SystemRandomNumberGenerator()
         for index in buffer.indices {
             buffer[index] = UInt8.random(in: .min ... .max, using: &generator)
@@ -41,17 +47,17 @@ struct POSIXRandom: RandomNumberSource {
 /// restarts. Suitable for macOS and Linux; an embedded target would back this with flash.
 ///
 /// - Note: Mirrors `HAPPlatformKeyValueStore` from the ADK.
-final class FileKeyValueStore: KeyValueStore {
+public final class FileKeyValueStore: KeyValueStore {
 
     private let directory: URL
     private let fileManager = FileManager.default
 
-    init(directory: URL) throws {
+    public init(directory: URL) throws {
         self.directory = directory
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
-    func value(
+    public func value(
         for key: KeyValueStoreKey,
         in domain: KeyValueStoreDomain
     ) throws(HAPError) -> Data? {
@@ -63,7 +69,7 @@ final class FileKeyValueStore: KeyValueStore {
         return data
     }
 
-    func setValue(
+    public func setValue(
         _ value: Data,
         for key: KeyValueStoreKey,
         in domain: KeyValueStoreDomain
@@ -76,7 +82,7 @@ final class FileKeyValueStore: KeyValueStore {
         }
     }
 
-    func removeValue(
+    public func removeValue(
         for key: KeyValueStoreKey,
         in domain: KeyValueStoreDomain
     ) throws(HAPError) {
@@ -89,7 +95,7 @@ final class FileKeyValueStore: KeyValueStore {
         }
     }
 
-    func enumerateKeys(
+    public func enumerateKeys(
         in domain: KeyValueStoreDomain,
         _ body: (KeyValueStoreKey) throws(HAPError) -> Bool
     ) throws(HAPError) {
@@ -103,7 +109,7 @@ final class FileKeyValueStore: KeyValueStore {
         }
     }
 
-    func removeAll(in domain: KeyValueStoreDomain) throws(HAPError) {
+    public func removeAll(in domain: KeyValueStoreDomain) throws(HAPError) {
         let directory = url(for: domain)
         guard fileManager.fileExists(atPath: directory.path) else { return }
         do {

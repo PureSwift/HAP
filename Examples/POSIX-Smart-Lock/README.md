@@ -6,15 +6,19 @@ Demonstrates the pieces an application supplies to the `HAP` library:
 
 | Piece | File | Role |
 | --- | --- | --- |
-| Attribute database | [`SmartLock.swift`](Sources/POSIXSmartLock/SmartLock.swift) | Lock Mechanism service with current/target state |
-| Value handling | [`SmartLock.swift`](Sources/POSIXSmartLock/SmartLock.swift) | `CharacteristicDataSource` driving the mechanism |
-| Platform abstraction | [`POSIXPlatform.swift`](Sources/POSIXSmartLock/POSIXPlatform.swift) | Monotonic clock, random source, file-backed key-value store |
-| Bluetooth transport | [`Peripheral.swift`](Sources/POSIXSmartLock/Peripheral.swift) | `HAPPeripheralManager` conformance per platform |
-| Wiring | [`main.swift`](Sources/POSIXSmartLock/main.swift) | Composition and run loop |
+| Attribute database | [`SmartLock.swift`](SmartLock.swift) | Lock Mechanism service with current/target state |
+| Value handling | [`SmartLock.swift`](SmartLock.swift) | `CharacteristicDataSource` driving the mechanism |
+| Platform abstraction | [`POSIXPlatform.swift`](../POSIXHAP/POSIXPlatform.swift) | Monotonic clock, random source, file-backed key-value store |
+| Bluetooth transport | [`Peripheral.swift`](../POSIXHAP/Peripheral.swift) | `HAPPeripheralManager` conformance per platform |
+| Wiring | [`main.swift`](main.swift) | Composition and run loop |
+
+The platform and transport pieces live in the shared `POSIXHAP` library, so both examples
+share one implementation.
 
 ## Running
 
 ```sh
+cd Examples
 swift run posix-smart-lock --setup-code 518-08-582 --name "Front Door"
 ```
 
