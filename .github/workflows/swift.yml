@@ -1,0 +1,50 @@
+name: Swift
+
+on: [push, pull_request]
+
+jobs:
+  macos:
+    name: macOS
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift Version
+        run: swift --version
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    container: swift:6.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift Version
+        run: swift --version
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test
+
+  example-macos:
+    name: Example (macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        working-directory: Examples/POSIX-Smart-Lock
+        run: swift build
+
+  example-linux:
+    name: Example (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install BlueZ headers
+        run: apt-get update && apt-get install -y libbluetooth-dev
+      - name: Build
+        working-directory: Examples/POSIX-Smart-Lock
+        run: swift build
