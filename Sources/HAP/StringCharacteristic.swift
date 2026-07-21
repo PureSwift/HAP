@@ -67,6 +67,24 @@ public struct StringCharacteristicSubscriptionRequest {
 
 /// A HomeKit characteristic that carries a UTF-8 string value.
 public struct StringCharacteristic {
+
+    /// Creates a characteristic.
+    public init(
+        iid: UInt64,
+        characteristicType: HAPUUID,
+        debugDescription: String,
+        manufacturerDescription: String? = nil,
+        properties: CharacteristicProperties,
+        maxLength: UInt16
+    ) {
+        self.iid = iid
+        self.characteristicType = characteristicType
+        self.debugDescription = debugDescription
+        self.manufacturerDescription = manufacturerDescription
+        self.properties = properties
+        self.maxLength = maxLength
+    }
+
     /// Instance ID.
     public var iid: UInt64
 
