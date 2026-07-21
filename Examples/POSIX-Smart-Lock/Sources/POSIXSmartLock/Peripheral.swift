@@ -49,12 +49,16 @@ extension DarwinPeripheral: @retroactive HAPPeripheralManager {
 #elseif os(Linux)
 
 /// The platform peripheral on Linux, backed by BlueZ sockets.
-typealias NativePeripheral = GATTPeripheral<HostController, BluetoothLinux.L2CAPSocket>
+typealias NativePeripheral = GATTPeripheral<
+    BluetoothLinux.HostController,
+    BluetoothLinux.L2CAPSocket.Server
+>
 
 /// The Linux stack drives the controller directly over HCI, so it can broadcast the
 /// advertisement HAP requires and can disconnect an individual central.
 extension GATTPeripheral: @retroactive HAPPeripheralManager
-where Socket == BluetoothLinux.L2CAPSocket, HostController == BluetoothLinux.HostController {
+where Socket == BluetoothLinux.L2CAPSocket.Server,
+      HostController == BluetoothLinux.HostController {
 
     public var supportedFeatures: HAPPeripheralFeature { .all }
 
