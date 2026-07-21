@@ -15,11 +15,12 @@ import GATT
 /// HAP-BLE is write-then-read on the same characteristic: the controller writes a request
 /// PDU and then reads the staged response.
 ///
-/// Advertising data is not part of the `PeripheralManager` protocol — it is configured by
-/// the platform's Bluetooth stack. Feed ``advertisementData()`` to the platform when
-/// starting to advertise and whenever ``BLEServerSession/advertisementData()`` changes.
+/// Advertising is managed automatically: the binding advertises the accessory's current
+/// state, stops while a controller is connected, and resumes on disconnect. Capabilities the
+/// peripheral does not provide — see ``HAPPeripheralManager/supportedFeatures`` — are
+/// skipped rather than faked.
 public final class BLEPeripheralServer<
-    Peripheral: PeripheralManager,
+    Peripheral: HAPPeripheralManager,
     Server: BLEServerSession
 > {
 
@@ -38,10 +39,10 @@ public final class BLEPeripheralServer<
     /// The connection identifier assigned to the next central that connects.
     private var nextConnection: UInt64 = 1
 
-    /// Invoked when a connection is dropped because the request could not be handled.
+    /// Invoked when a connection is dropped because a request could not be handled.
     ///
-    /// The transport should disconnect the central; the `PeripheralManager` protocol has no
-    /// per-central disconnect, so this is surfaced for the platform to act on.
+    /// The binding already asked the peripheral to disconnect the central; this reports the
+    /// event for logging or platform-specific recovery.
     public var didDropConnection: ((Peripheral.Central) -> Void)?
 
     public init(peripheral: Peripheral, server: Server) {
@@ -59,6 +60,23 @@ public final class BLEPeripheralServer<
             map(added, of: service)
         }
         install(on: &peripheral)
+    }
+
+    /// Advertises the accessory's current state.
+    ///
+    /// Called automatically on ``register()`` and whenever a controller disconnects; call
+    /// it after changing state that appears in the advertisement, such as the global state
+    /// number or the pairing status.
+    ///
+    /// Does nothing while a controller is connected, since an accessory must not advertise
+    /// during a connection.
+    public func updateAdvertising() throws(HAPError) {
+        guard !isConnected else { return }
+        let advertisement = HAPAdvertisement(
+            data: try server.advertisementData(),
+            localName: server.accessory.name
+        )
+        try? peripheral.startAdvertising(advertisement)
     }
 }
 
@@ -110,11 +128,14 @@ private extension BLEPeripheralServer {
         nextConnection &+= 1
         connections[central.id] = connection
         server.connect(connection)
+        // An accessory must not advertise while a controller is connected.
+        try? peripheral.stopAdvertising()
     }
 
     func didDisconnect(_ central: Peripheral.Central) {
         guard let connection = connections.removeValue(forKey: central.id) else { return }
         try? server.disconnect(connection)
+        try? updateAdvertising()
     }
 
     func didWrite(_ confirmation: GATTWriteConfirmation<Peripheral.Central, Peripheral.Data>) {
@@ -130,7 +151,9 @@ private extension BLEPeripheralServer {
         } catch {
             // The connection is unrecoverable; the central must reconnect.
             connections[confirmation.central.id] = nil
+            try? peripheral.disconnect(confirmation.central)
             didDropConnection?(confirmation.central)
+            try? updateAdvertising()
         }
     }
 
@@ -157,8 +180,6 @@ private extension BLEPeripheralServer {
 public extension BLEPeripheralServer {
 
     /// The regular advertisement payload for the current accessory state.
-    ///
-    /// Pass to the platform's advertising API — see the note on ``BLEPeripheralServer``.
     func advertisementData() throws(HAPError) -> Data {
         try server.advertisementData()
     }
