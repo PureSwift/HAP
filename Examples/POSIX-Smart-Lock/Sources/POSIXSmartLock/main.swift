@@ -4,6 +4,10 @@ import GATT
 import HAP
 import HAPCryptoKit
 
+#if os(Linux)
+import BluetoothLinux
+#endif
+
 // A HomeKit smart lock over Bluetooth LE, for macOS and Linux.
 //
 // Usage:
@@ -77,7 +81,7 @@ guard let hostController = await HostController.default else {
 }
 let peripheral = NativePeripheral(
     hostController: hostController,
-    socket: BluetoothLinux.L2CAPSocket.self
+    socket: BluetoothLinux.L2CAPSocket.Server.self
 )
 #endif
 
