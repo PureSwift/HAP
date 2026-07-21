@@ -46,6 +46,26 @@ public struct ServiceRequest {
 
 /// A HomeKit service.
 public struct Service {
+
+    /// Creates a service.
+    public init(
+        iid: UInt64,
+        serviceType: HAPUUID,
+        debugDescription: String,
+        name: String? = nil,
+        properties: ServiceProperties,
+        linkedServices: [UInt16]? = nil,
+        characteristics: [Characteristic]? = nil
+    ) {
+        self.iid = iid
+        self.serviceType = serviceType
+        self.debugDescription = debugDescription
+        self.name = name
+        self.properties = properties
+        self.linkedServices = linkedServices
+        self.characteristics = characteristics
+    }
+
     /// Instance ID.
     ///
     /// - Must be unique across all service and characteristic instance IDs of the accessory.
