@@ -1,6 +1,24 @@
 
 /// A HomeKit characteristic that carries an opaque data blob.
 public struct DataCharacteristic {
+
+    /// Creates a characteristic.
+    public init(
+        iid: UInt64,
+        characteristicType: HAPUUID,
+        debugDescription: String,
+        manufacturerDescription: String? = nil,
+        properties: CharacteristicProperties,
+        maxLength: UInt32
+    ) {
+        self.iid = iid
+        self.characteristicType = characteristicType
+        self.debugDescription = debugDescription
+        self.manufacturerDescription = manufacturerDescription
+        self.properties = properties
+        self.maxLength = maxLength
+    }
+
     /// Instance ID.
     ///
     /// - Must be unique across all service and characteristic instance IDs of the accessory.
