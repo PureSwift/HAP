@@ -67,6 +67,30 @@ public struct IntCharacteristicSubscriptionRequest {
 
 /// A HomeKit characteristic that carries a signed 32-bit integer value.
 public struct IntCharacteristic {
+
+    /// Creates a characteristic.
+    public init(
+        iid: UInt64,
+        characteristicType: HAPUUID,
+        debugDescription: String,
+        manufacturerDescription: String? = nil,
+        properties: CharacteristicProperties,
+        units: CharacteristicUnits,
+        minimumValue: Int32,
+        maximumValue: Int32,
+        stepValue: Int32
+    ) {
+        self.iid = iid
+        self.characteristicType = characteristicType
+        self.debugDescription = debugDescription
+        self.manufacturerDescription = manufacturerDescription
+        self.properties = properties
+        self.units = units
+        self.minimumValue = minimumValue
+        self.maximumValue = maximumValue
+        self.stepValue = stepValue
+    }
+
     /// Instance ID.
     public var iid: UInt64
 
